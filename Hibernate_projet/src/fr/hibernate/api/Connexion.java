@@ -126,7 +126,7 @@ public final class Connexion {
 		return objects;
 	}
 
-	
+
 
 	/**
 	 * Implements the delete in database
@@ -216,7 +216,7 @@ public final class Connexion {
 		return results;
 	}
 
-	
+
 
 	/**
 	 * This method implements a generic namedQueryListResult

@@ -13,8 +13,8 @@
 			<!-- Configuration de la BDD -->
 			<property name="javax.persistence.jdbc.driver" value="com.mysql.jdbc.Driver" />
 			<property name="javax.persistence.jdbc.url"
-				value="jdbc:mysql://mysql.hibernate.alwaysdata.net:3306/hibernate_projet" />
-			<property name="javax.persistence.jdbc.user" value="hibernate" />
+				value="jdbc:mysql://mysql.etrade.alwaysdata.net:3306/etrade_hibernate" />
+			<property name="javax.persistence.jdbc.user" value="etrade" />
 			<property name="javax.persistence.jdbc.password" value="azerty123" />
 
 			<!-- Spécifie le 'dialecte' SQL utilisé pour communiquer avec la BDD -->

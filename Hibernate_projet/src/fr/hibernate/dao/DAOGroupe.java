@@ -14,14 +14,13 @@ import javax.persistence.criteria.Root;
 import org.hibernate.Criteria;
 
 import fr.hibernate.api.Connexion;
-import fr.hibernate.metier.Commande;
-import fr.hibernate.metier.Enfant;
+import fr.hibernate.metier.Groupe;
 
-public class DAOEnfant {
+public class DAOGroupe {
 
-	public boolean insert (Enfant enfant){
+	public boolean insert (Groupe groupe){
 		try {
-			Connexion.getInstance().insert(enfant);
+			Connexion.getInstance().insert(groupe);
 			return true;
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -30,9 +29,9 @@ public class DAOEnfant {
 
 	}
 
-	public boolean delete (Enfant enfant){
+	public boolean delete (Groupe groupe){
 		try{
-			Connexion.getInstance().delete(enfant);
+			Connexion.getInstance().delete(groupe);
 			return true;
 		}
 		catch (Exception e){
@@ -41,9 +40,9 @@ public class DAOEnfant {
 		}
 	}
 
-	public Enfant update (Enfant enfant){
+	public Groupe update (Groupe groupe){
 		try{
-			return Connexion.getInstance().update(enfant);
+			return Connexion.getInstance().update(groupe);
 		}
 		catch (Exception e){
 			e.printStackTrace();
@@ -52,50 +51,50 @@ public class DAOEnfant {
 
 	}
 
-	public static List<Enfant> findAll (){
-		return Connexion.getInstance().getAll(Enfant.class);
+	public static List<Groupe> findAll (){
+		return Connexion.getInstance().getAll(Groupe.class);
 	}
 
-	public static Enfant find (int idEnfant){
-		return Connexion.getInstance().find(Enfant.class, idEnfant);
+	public static Groupe find (int idGroupe){
+		return Connexion.getInstance().find(Groupe.class, idGroupe);
 	}
 	
 	/**
 	 * Implémentations d’une methode pur Java permettant de calculer le 
-	 * nombre de commandes par enfants
+	 * nombre de commandes par groupes
 	 */
-	public static int getNbCommandeJava(long idEnfant) {
+	public static int getNbCommandeJava(long idGroupe) {
 		EntityManagerFactory emf = Connexion.getInstance().getEmf();
 		EntityManager em = emf.createEntityManager();
-		Enfant enfant = em.find(Enfant.class, idEnfant);
-		int result;
-		if(enfant.getCommandes()!=null){
-			result = enfant.getCommandes().size();
-		} else result = 0;		
+		Groupe groupe = em.find(Groupe.class, idGroupe);
+		int result=0;
+		/*if(groupe.getCommandes()!=null){
+			result = groupe.getCommandes().size();
+		} else result = 0;*/		
 		em.close();
 		return result;
 	}
 	/**
 	 * Implémentations d’une methode utilisant HQL permettant de calculer le 
-	 * nombre de commandes par enfants
+	 * nombre de commandes par groupes
 	 */
-	public static int getNbCommandeSQL(long idEnfant) {
+	public static int getNbCommandeSQL(long idGroupe) {
 		EntityManagerFactory emf = Connexion.getInstance().getEmf();
 		EntityManager em = emf.createEntityManager();
-		Query query = em.createNativeQuery("SELECT COUNT(c.IdEnfant) as nb FROM Commande c WHERE c.IdEnfant=? GROUP BY c.IdEnfant");
-		query.setParameter(1, idEnfant);
+		Query query = em.createNativeQuery("SELECT COUNT(c.IdGroupe) as nb FROM Commande c WHERE c.IdGroupe=? GROUP BY c.IdGroupe");
+		query.setParameter(1, idGroupe);
 		BigInteger result = (BigInteger) query.getSingleResult();
 		em.close();
 		return result.intValue();
 	}
 	/**
 	 * Implémentations d’une methode utilisant SQL permettant de calculer le 
-	 * nombre de commandes par enfants
+	 * nombre de commandes par groupes
 	 */
-	public static long getNbCommandeHQL(long idEnfant) {
+	public static long getNbCommandeHQL(long idGroupe) {
 		
-		String query = "SELECT COUNT(c.enfant.idEnfant) as nb FROM Commande c WHERE c.enfant.idEnfant =? GROUP BY c.enfant.idEnfant";
-		long result = Connexion.getInstance().querySingleResult(query, Long.class, idEnfant);
+		String query = "SELECT COUNT(c.groupe.idGroupe) as nb FROM Commande c WHERE c.groupe.idGroupe =? GROUP BY c.groupe.idGroupe";
+		long result = Connexion.getInstance().querySingleResult(query, Long.class, idGroupe);
 		return result;
 	}
 }
