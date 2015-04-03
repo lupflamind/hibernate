@@ -7,16 +7,24 @@ import java.util.List;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.EntityManager;
+import javax.persistence.EntityManagerFactory;
 import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.JoinTable;
 import javax.persistence.ManyToMany;
 import javax.persistence.OneToMany;
+import javax.persistence.Query;
 import javax.persistence.Table;
 import javax.persistence.Transient;
+import javax.persistence.TypedQuery;
 
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
+
+import fr.hibernate.api.Connexion;
 
 
 @Entity
@@ -66,11 +74,11 @@ public class Personne {
 	private String nom;
 	private String prenom;
 
-	private List<Personne> relationsDirectes;
-	private List<Formation> formations;
-	private List<Poste> postes;
-	private List<Groupe> groupes;
-	private List<Personne> personnesVus;
+	private List<Personne> relationsDirectes = new ArrayList<Personne>();
+	private List<Formation> formations = new ArrayList<Formation>();
+	private List<Poste> postes = new ArrayList<Poste>();
+	private List<Groupe> groupes = new ArrayList<Groupe>();
+	private List<Personne> personnesVus = new ArrayList<Personne>();
 
 	/**
 	 * @return the idPersonne
@@ -122,8 +130,8 @@ public class Personne {
 	/**
 	 * @return the formations
 	 */
-	@ManyToMany(fetch = FetchType.EAGER, mappedBy = "personnes")
-	@Fetch(FetchMode.JOIN)
+	@ManyToMany(fetch = FetchType.LAZY, mappedBy = "personnes")
+	//@Fetch(FetchMode.JOIN)
 	public List<Formation> getFormations() {
 		return formations;
 	}
@@ -154,8 +162,12 @@ public class Personne {
 	/**
 	 * @return the personnesVus
 	 */
-	@ManyToMany(fetch = FetchType.EAGER)
-	@Fetch(FetchMode.JOIN)
+	@ManyToMany(fetch = FetchType.LAZY)
+	//@Fetch(FetchMode.JOIN)
+	@JoinTable(name ="Personne_PersonneVu", joinColumns = { 
+			@JoinColumn(name = "IdPersonne", nullable = false, updatable = false) }, 
+			inverseJoinColumns = { @JoinColumn(name = "IdPersonneVu", 
+					nullable = false, updatable = false) })
 	public List<Personne> getPersonnesVus() {
 		return personnesVus;
 	}
@@ -181,14 +193,24 @@ public class Personne {
 		this.groupes = groupes;
 	}
 
-	@ManyToMany(fetch = FetchType.EAGER)
-	@Fetch(FetchMode.JOIN)
+	@ManyToMany(fetch = FetchType.LAZY)
+	//@Fetch(FetchMode.JOIN)
+	@JoinTable(name ="Personne_PersonneRelation", joinColumns = { 
+			@JoinColumn(name = "IdPersonne", nullable = false, updatable = false) }, 
+			inverseJoinColumns = { @JoinColumn(name = "IdPersonneRelation", 
+					nullable = false, updatable = false) })
 	public List<Personne> getRelationsDirectes() {
 		return relationsDirectes;
 	}
 
+	@Transient
+	public void addRealationDirect(Personne personne){
+		relationsDirectes.add(personne);
+		personne.getRelationsDirectes().add(personne);
+	}
+
 	/**
-	 * Relations d'un niveau
+	 * Relations d'un niveau en java pur
 	 * 
 	 */
 	@Transient
@@ -202,9 +224,56 @@ public class Personne {
 		for (int i = 2; i<=niveau;i++){
 			for (Personne p : current)
 				neww.addAll(p.getRelationsDirectes());
-			current.clear();current.addAll(neww);neww.clear();
+			neww.removeAll(current);current.clear();current.addAll(neww);neww.clear();
 		}
 		return current;
+	}
+	
+	/**
+	 * Relations d'un niveau en Hql
+	 * 
+	 */
+	@Transient
+	public List<Personne> getRelationsParNiveauHql(int niveau) {
+		
+		StringBuilder sb = new StringBuilder("Select DISTINCT(p"+niveau+") FROM Personne p0");
+
+		for (int i = 1; i<=niveau;i++){
+			sb.append(" INNER JOIN p"+(i-1)+".relationsDirectes as p"+i);
+		}
+		sb.append(" WHERE p0.idPersonne=?");
+		for (int i = 1; i<niveau;i++){
+			sb.append(" AND p"+niveau+".idPersonne<>p"+i+".idPersonne");
+		}
+		EntityManagerFactory emf = Connexion.getInstance().getEmf();
+		EntityManager em = emf.createEntityManager();
+		TypedQuery<Personne> query = em.createQuery(sb.toString(),Personne.class);
+		query.setParameter(1, idPersonne);
+		List<Personne> personnes = query.getResultList();
+		em.close();
+		return personnes;
+	}
+	
+
+	public List<Personne> getRelationsParNiveauSql(int niveau) {
+		
+		StringBuilder sb = new StringBuilder("Select DISTINCT(p"+(niveau+1)+".IdPersonne),p"+(niveau+1)+".Nom,p"+(niveau+1)+".Prenom");
+		sb.append(" FROM Personne p0 INNER JOIN Personne_PersonneRelation p1 ON p0.IdPersonne=p1.IdPersonne");
+		for (int i = 2; i<=niveau;i++){
+			sb.append(" INNER JOIN Personne_PersonneRelation p"+i+" ON p"+(i-1)+".IdPersonneRelation=p"+i+".IdPersonne");
+		}
+		sb.append(" INNER JOIN Personne p"+(niveau+1)+" ON p"+niveau+".IdPersonneRelation=p"+(niveau+1)+".IdPersonne");
+		sb.append(" WHERE p0.IdPersonne=?");
+		for (int i = 1; i<niveau;i++){
+			sb.append(" AND p"+(niveau+1)+".IdPersonne <>p"+i+".IdPersonneRelation ");
+		}
+		EntityManagerFactory emf = Connexion.getInstance().getEmf();
+		EntityManager em = emf.createEntityManager();
+		Query query = em.createNativeQuery(sb.toString(),Personne.class);
+		query.setParameter(1, idPersonne);
+		List<Personne> personnes = query.getResultList();
+		em.close();
+		return personnes;
 	}
 
 	@Transient
@@ -216,8 +285,8 @@ public class Personne {
 		return null;
 	}
 
-	@ManyToMany(fetch = FetchType.EAGER, mappedBy = "personnes")
-	@Fetch(FetchMode.JOIN)
+	@ManyToMany(fetch = FetchType.LAZY, mappedBy = "personnes")
+	//@Fetch(FetchMode.SUBSELECT)
 	public List<Groupe> getGroupes() {
 		return groupes;
 	}
@@ -235,5 +304,6 @@ public class Personne {
 		}
 		return personnes;
 	}
+
 
 }

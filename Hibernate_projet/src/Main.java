@@ -14,17 +14,18 @@ import fr.hibernate.metier.Poste;
 public class Main {
 
 	static public void main (String[] argv) {
-		exemple1();
+		//exemple1();
 		//exemple2();
 		//exemple3();
 		//exemple4();
 		//exemple5();
-		//exempleNbPostes();
-		//exempleNbEntreprisesParPersonne();
+		exempleNbRelationNiveau2();
+		
 	}
 
 	/**
 	 * List<Poste> en LAZY dans Entreprise et Personne
+	 * Toutes les listes en LAZY dans Personne (BUG type de chargement quand ManyToMany sur une meme table => toujours EAGER)
 	 * entreprise et personne en EAGER dans Poste
 	 * Insert, Delete, Update
 	 */
@@ -45,10 +46,10 @@ public class Main {
 
 		//Modification du jouet
 		p.setPrenom("prenom_update");
-		p = update(p);//Génère 1 requête Select (merge) et 1 Update
+		p = update(p);//Génère 1 requête Select (merge) et 1 Update // BUG Hibernate: 2 select en plus pour les relationsDirect et PersonnesVus
 
 		//Affichage des jouets
-		DAOGenerique.findAll(Personne.class);//Génère 1 requête select (List<Poste> en mode Lazy)
+		DAOGenerique.findAll(Personne.class);//Génère 1 requête select (List<Poste> et autres listes en mode Lazy)
 
 		Poste po = new Poste("software engineering", null, null, p, null);
 		e = update(e);//Génère 1 requête select (merge) et 1 Insert
@@ -56,14 +57,15 @@ public class Main {
 		persister(po);//Génère 1 requête Insert (objet transient)
 
 		po.setDateFin(Calendar.getInstance().getTime());
-		po = update(po);//Génère 1 requête Select (merge) et 1 Update
-		DAOGenerique.findAll(Poste.class);//Génère 3 requêtes select (Poste et Personne en mode EAGER et sous select par défaut)
+		po = update(po);//Génère 3 requêtes Select (poste, entreprise du poste et personne du poste) (merge) et 1 Update
+		DAOGenerique.findAll(Poste.class);//Génère 3 requêtes select (Entreprise et Personne en mode EAGER et sous select par défaut)
+		
 	}
 
 
 	/**
 	 * List<Poste> en EAGER dans Entreprise et Personne
-	 * Entreprise et Personne en LAZY dans Poste
+	 * Entreprise et Personne en EAGER par défaut dans Poste
 	 * 
 	 */
 	private static void exemple2(){
@@ -73,25 +75,29 @@ public class Main {
 		Entreprise e2 = new Entreprise("nom","adresse");
 		persister(e);// Génère 1 requête Insert (objet transient)
 		persister(e2);// Génère 1 requête Insert (objet transient)
-		DAOGenerique.findAll(Entreprise.class);//Génère 1 requêtes select(from enfant) + 2 requêtes select (commandes des 2 enfants)
+		DAOGenerique.findAll(Entreprise.class);//Génère 1 requêtes select(from entreprise) + 2 requêtes select (postes des 2 entreprises)
 		//(List<Poste> en mode EAGER)
 
-		// Insertion d'un nouveau jouet
+		// Insertion de nouvelles personnes
+		EntityManager em = Connexion.getInstance().getEmf().createEntityManager();
 		Personne j = new Personne("nom","description");
 		Personne j2 = new Personne("nom2","description");
-		persister(j);//Génère 1 requête Insert
-		persister(j2);//Génère 1 requête Insert
-
-		//Affichage des jouets
-		DAOGenerique.findAll(Personne.class);//Génère 1 requête select (from jouet) + 2 requêtes select (commandes des 2 jouets) (List<Poste> en mode EAGER)
+		em.getTransaction().begin();
+		em.persist(j);//Génère 1 requête Insert
+		em.persist(j2);//Génère 1 requête Insert
+		j.addRealationDirect(j2);//Génère 2 requête Insert => j add à j2 et j2 add à j;
+		em.getTransaction().commit();//Gènère les requêtes contenues dans la transaction
+		
+		//Affichage des personnes
+		DAOGenerique.findAll(Personne.class);//Génère 1 requête select (from personne) + 2 requêtes select (postes des 2 personnes) (List<Poste> en mode EAGER)
 
 		Poste c = new Poste("software engineering",null,null,j2,e);
 		Poste c2 = new Poste("serveur",null,null,j,e2);
 		persister(c);//Génère 1 requête Insert (objet Transient)
 		persister(c2);//Génère 1 requête Insert (objet Transient)
 
-		DAOGenerique.findAll(Poste.class);//Génère 1 requête select (from commande) + 1 requête select (enfant de la commande) 
-		//+ 1 requête select (commandes de l'enfant) +1 requête select (jouet de la commande de l'enfant) + 1 requête select (jouet de la commande du début)
+		DAOGenerique.findAll(Poste.class);//Génère 1 requête select (from Poste) + 1 requête select (entreprise du poste) 
+		//+ 1 requête select (postes de l'entreprise) +1 requête select (personne du poste) + 1 requête select (postes de la personne)
 	}
 
 	/**
@@ -108,7 +114,7 @@ public class Main {
 		persister(e);// Génère 1 requête Insert (objet transient)
 		persister(e2);// Génère 1 requête Insert (objet transient)
 
-		// Insertion d'un nouveau jouet
+		// Insertion de nouvelles personnes
 		Personne j = new Personne("nom","description");
 		Personne j2 = new Personne("nom2","description");
 		persister(j);//Génère 1 requête Insert
@@ -121,37 +127,37 @@ public class Main {
 
 		EntityManager em = Connexion.getInstance().getEmf().createEntityManager();
 		TypedQuery<Entreprise> typedquery = em.createQuery("FROM " + Entreprise.class.getSimpleName(),Entreprise.class);
-		List<Entreprise> enfants = typedquery.getResultList();//Génère 1 requête select (List<Poste> et  en mode LAZY)
+		List<Entreprise> entreprises = typedquery.getResultList();//Génère 1 requête select (List<Poste> et  en mode LAZY)
 
-		for (Entreprise etu : enfants){
-			System.out.println(etu);
-			System.out.println(etu.getPostes().size());//1 requete select (commandes)
-			for (Poste co : etu.getPostes())
-				System.out.println(co.getPersonne());//1 requête select (jouet)
+		for (Entreprise ent : entreprises){
+			System.out.println(ent);
+			System.out.println(ent.getPostes().size());//1 requete select (postes)
+			for (Poste po : ent.getPostes())
+				System.out.println(po.getPersonne());//1 requête select (personne)
 		}
 		em.close();
 		em = Connexion.getInstance().getEmf().createEntityManager();
 		TypedQuery<Personne> typedquery2 = em.createQuery("FROM " + Personne.class.getSimpleName(),Personne.class);
-		List<Personne> jouets = typedquery2.getResultList();//Génère 1 requête select (List<Poste> et en mode LAZY)
-		for (Personne jou : jouets){
-			System.out.println(jou);
-			System.out.println(jou.getPostes().size());//1 requete select (commandes)
-			for (Poste co : jou.getPostes())
-				System.out.println(co.getPersonne());//Pas de requête: hibernate a le jouet dans son cache
+		List<Personne> personnes = typedquery2.getResultList();//Génère 1 requête select (List<Poste> est en mode LAZY)
+		for (Personne per : personnes){
+			System.out.println(per);
+			System.out.println(per.getPostes().size());//1 requete select (postes)
+			for (Poste co : per.getPostes())
+				System.out.println(co.getPersonne());//Pas de requête: hibernate a la personne dans son cache
 		}
 		em.close();
 		em = Connexion.getInstance().getEmf().createEntityManager();
 		TypedQuery<Poste> typedquery3 = em.createQuery("FROM " + Poste.class.getSimpleName(),Poste.class);
-		List<Poste> commandes = typedquery3.getResultList();//Génère 1 requête select (List<Poste> et  en mode LAZY)
-		for (Poste co : commandes){
-			System.out.println(co);//2 requetes (jouet et enfant) car la methode toString affiche l'enfant et le jouet de la commande
-			System.out.println(co.getEntreprise());// deja chargé => rien
-			System.out.println(co.getPersonne());// deja chargé => rien
-			System.out.println(co.getEntreprise().getPostes().size());//1 select (commandes dans Entreprise)
-			System.out.println(co.getPersonne().getPostes().size());//1 select (commandes dans Personne)
-			for (Poste co1 : co.getEntreprise().getPostes())
+		List<Poste> postes = typedquery3.getResultList();//Génère 1 requête select (List<Poste> et  en mode LAZY)
+		for (Poste po : postes){
+			System.out.println(po);//2 requetes (jouet et enfant) car la methode toString affiche l'enfant et le jouet de la commande
+			System.out.println(po.getEntreprise());// deja chargé => rien
+			System.out.println(po.getPersonne());// deja chargé => rien
+			System.out.println(po.getEntreprise().getPostes().size());//1 select (postes dans Entreprise)
+			System.out.println(po.getPersonne().getPostes().size());//1 select (postes dans Personne)
+			for (Poste co1 : po.getEntreprise().getPostes())
 				System.out.println(co1.getPersonne());//deja chargé
-			for (Poste co2 : co.getPersonne().getPostes())
+			for (Poste co2 : po.getPersonne().getPostes())
 				System.out.println(co2.getEntreprise());//deja chargé
 
 		}
@@ -169,8 +175,8 @@ public class Main {
 		Entreprise e2 = new Entreprise("nom","adresse");
 		persister(e);// Génère 1 requête Insert (objet transient)
 		persister(e2);// Génère 1 requête Insert (objet transient)
-		DAOGenerique.findAll(Entreprise.class);//Génère 1 requêtes select(from enfant) + 1 requête select avec sous-select
-		//(commandes des 2 enfants grâce à un IN)
+		DAOGenerique.findAll(Entreprise.class);//Génère 1 requêtes select(from entreprise) + 1 requête select avec sous-select
+		//(postes des 2 entreprise avec un IN)
 
 		// Insertion d'un nouveau jouet
 		Personne j = new Personne("nom","description");
@@ -179,18 +185,18 @@ public class Main {
 		persister(j2);//Génère 1 requête Insert
 
 		//Affichage des jouets
-		DAOGenerique.findAll(Personne.class);//Génère 1 requête select (from jouet) + 1 requête select avec sous select 
-		//(commandes des 2 jouets grace à un IN)
+		DAOGenerique.findAll(Personne.class);//Génère 1 requête select (from personne) + 1 requête select avec sous select 
+		//(postes des 2 personnes avec un IN)
 
 		Poste c = new Poste("poste_name",null,null,j2,e);
 		Poste c2 = new Poste("ingenieur",null,null,j,e2);
 		persister(c);//Génère 1 requête Insert (objet Transient)
 		persister(c2);//Génère 1 requête Insert (objet Transient)
 
-		DAOGenerique.findAll(Poste.class);//Génère 1 requête select (from commande) + 1 requête select (enfant de la commande 1) 
-		//+ 1 requête select (jouet de la commande 1) +1 requête select (enfant de la commande 2) + 1 requête select (jouet de la commande 2)
-		//+ 1 requête select (commandes du jouet de la commande 1) + 1 requête select (commandes de l'enfant de la commande 1) 
-		//+ 1 requête select (commandes du jouet de la commande 1) + 1 requête select (commandes de l'enfant de la commande 2)
+		DAOGenerique.findAll(Poste.class);//Génère 1 requête select (from poste) + 1 requête select (entreprise du poste 1)
+		//+ 1 requête select (personne du poste 1) +1 requête select (entreprise du poste 2) + 1 requête select (personne du poste 2)
+		//+ 1 requête select (postes de la personne du poste 1) + 1 requête select (postes de l'entreprise du poste 1) 
+		//+ 1 requête select (postes de la personne du poste 2) + 1 requête select (postes de l'entreprise du poste 2)
 	}
 
 	/**
@@ -205,94 +211,53 @@ public class Main {
 		Entreprise e2 = new Entreprise("nom","adresse");
 		persister(e);// Génère 1 requête Insert (objet transient)
 		persister(e2);// Génère 1 requête Insert (objet transient)
-		DAOGenerique.find(Personne.class, e.getIdEntreprise()); // 1 requête select avec jointure entre l'enfant, les commandes et les jouets
-		DAOGenerique.find(Personne.class, e2.getIdEntreprise()); // 1 requête select avec jointure entre l'enfant, les commandes et les jouets
+		DAOGenerique.find(Entreprise.class, e.getIdEntreprise()); // 1 requête select avec jointure entre l'entreprise, les postes et les personnes
+		DAOGenerique.find(Entreprise.class, e2.getIdEntreprise()); // 1 requête select avec jointure entre l'entreprise, les postes et les personnes
 
-		// Insertion d'un nouveau jouet
+		// Insertion de 2 personnes
 		Personne j = new Personne("nom","description");
 		Personne j2 = new Personne("nom2","description");
 		persister(j);//Génère 1 requête Insert
 		persister(j2);//Génère 1 requête Insert
 
 		//Affichage des jouets
-		DAOGenerique.find(Personne.class, j.getIdPersonne());// 1 requête select avec jointure entre le jouet, les commandes et l'enfant
-		DAOGenerique.find(Personne.class, j2.getIdPersonne());// 1 requête select avec jointure entre le jouet, les commandes et l'enfant
-		//Génère 1 requête select (from jouet) + 1 requête select avec sous select (commandes des 2 jouets grace à un IN)
-		//(List<Poste> en mode sous select EAGER)
+		DAOGenerique.find(Personne.class, j.getIdPersonne());// 1 requête select avec jointure entre la personne, les postes et l'entreprise
+		DAOGenerique.find(Personne.class, j2.getIdPersonne());// 1 requête select avec jointure entre la personne, les postes et l'entreprise
 
 		Poste c = new Poste("poste_name",null,null,j2,e);
 		Poste c2 = new Poste("ingenieur",null,null,j,e2);
 		persister(c);//Génère 1 requête Insert (objet Transient)
 		persister(c2);//Génère 1 requête Insert (objet Transient)
-		DAOGenerique.find(Poste.class, c.getIdPoste());// 1 requête select de la commande 1 avec recup du jouet et enfant par jointure
-		//+ 1 requête pour les commandes du jouet avec pour chaque commande l'enfant par jointure
-		//+ 1 requête pour les commandes de l'enfant avec pour chaque commande le jouet
-		DAOGenerique.find(Poste.class, c2.getIdPoste());// 1 requête select de la commande 2 avec recup du jouet et enfant par jointure
-		//+ 1 requête pour les commandes du jouet avec pour chaque commande l'enfant par jointure
-		//+ 1 requête pour les commandes de l'enfant avec pour chaque commande le jouet
+		DAOGenerique.find(Poste.class, c.getIdPoste());// 1 requête select du poste 1 avec recup de la personne et entreprise par jointure
+		//+ 1 requête pour les postes de la personne avec pour chaque poste l'entreprise par jointure
+		//+ 1 requête pour les commandes de l'entreprise avec pour chaque poste la personne
+		DAOGenerique.find(Poste.class, c2.getIdPoste());// 1 requête select du poste 2 avec recup de la personne et entreprise par jointure
+		//+ 1 requête pour les postes de la personne avec pour chaque poste l'entreprise par jointure
+		//+ 1 requête pour les postes de l'entreprise avec pour chaque poste la personne par joiture
 	}
 
-	private static void exempleNbEntreprisesParPersonne(){
-		Calendar cal = Calendar.getInstance();
-		cal.set(1991, 11, 11,0,0,0);
-		//1 appel de méthode = 1 entity manager => fermeture de l'entity à la fin de la méthode
-		Entreprise e = new Entreprise("nom","adresse");
-		Entreprise e2 = new Entreprise("nom2","adresse2");
-		persister(e);// Génère 1 requête Insert (objet transient)
-		persister(e2);// Génère 1 requête Insert (objet transient)
-
-		// Insertion d'un nouveau jouet
-		Personne j = new Personne("nom","description");
-		Personne j2 = new Personne("nom2","description2");
-		persister(j);//Génère 1 requête Insert
-		persister(j2);//Génère 1 requête Insert
-
-		//Creation des commandes
-		Poste c = new Poste("poste_name",null,null,j2,e);
-		Poste c2 = new Poste("ingenieur",null,null,j,e);
-		Poste c3 = new Poste("ingenieur",null,null,j,e2);
-		persister(c);//Génère 1 requête Insert (objet Transient)
-		persister(c2);//Génère 1 requête Insert (objet Transient)
-		persister(c3);//Génère 1 requête Insert (objet Transient)
-
-		/*System.out.println("Methode Java: Le nombre d'enfants a avoir commandÃ© le jouet " + 
-				j.getIdPersonne() + " est " + j.getNbEntreprisesParPersonneJava());
-		System.out.println("Methode HQL: Le nombre d'enfants a avoir commandÃ© le jouet " + 
-				j.getIdPersonne() + " est " + j.getNbEntreprisesParPersonneHQL());
-		System.out.println("Methode SQL: Le nombre d'enfants a avoir commandÃ© le jouet " + 
-				j.getIdPersonne() + " est " + j.getNbEntreprisesParPersonneSQL());*/
-
-	}
-
-	private static void exempleNbPostes(){
-		Calendar cal = Calendar.getInstance();
-		cal.set(1991, 11, 11,0,0,0);
-		//1 appel de méthode = 1 entity manager => fermeture de l'entity à la fin de la méthode
-		Entreprise e = new Entreprise("nom","adresse");
-		Entreprise e2 = new Entreprise("nom2","adresse2");
-		persister(e);// Génère 1 requête Insert (objet transient)
-		persister(e2);// Génère 1 requête Insert (objet transient)
-
-		// Insertion d'un nouveau jouet
-		Personne j = new Personne("nom","description");
-		Personne j2 = new Personne("nom2","description2");
-		persister(j);//Génère 1 requête Insert
-		persister(j2);//Génère 1 requête Insert
-
-		//Creation des commandes
-		Poste c = new Poste("poste_name",null,null,j2,e);
-		Poste c2 = new Poste("ingenieur",null,null,j,e);
-		Poste c3 = new Poste("ingenieur",null,null,j,e2);
-		persister(c);//Génère 1 requête Insert (objet Transient)
-		persister(c2);//Génère 1 requête Insert (objet Transient)
-		persister(c3);//Génère 1 requête Insert (objet Transient)
-
-		/*System.out.println("Methode Java: Le nombre de commandes faites par l'enfant " + 
-				e.getIdEntreprise() + " est " + e.getNbPosteJava());
-		System.out.println("Methode HQL: Le nombre de commandes faites par l'enfant " + 
-				e.getIdEntreprise() + " est " + e.getNbPosteHQL());
-		System.out.println("Methode SQL: Le nombre de commandes faites par l'enfant " + 
-				e.getIdEntreprise() + " est " + e.getNbPosteSQL());*/
+	private static void exempleNbRelationNiveau2(){
+		// Insertion des personnes
+		EntityManager em = Connexion.getInstance().getEmf().createEntityManager();
+		em.getTransaction().begin();
+		Personne j = new Personne("nom","description");em.persist(j);
+		Personne j2 = new Personne("nom2","description2");em.persist(j2);
+		Personne j3 = new Personne("nom3","description3");em.persist(j3);
+		Personne j4 = new Personne("nom4","description4");em.persist(j4);
+		Personne j5 = new Personne("nom5","description5");em.persist(j5);
+		Personne j6 = new Personne("nom6","description6");em.persist(j6);
+		Personne j7 = new Personne("nom7","description7");em.persist(j7);
+		Personne j8 = new Personne("nom8","description8");em.persist(j8);
+		Personne j9 = new Personne("nom9","description9");em.persist(j9);
+		j.addRealationDirect(j2);j.addRealationDirect(j3);
+		j.addRealationDirect(j4);
+		j2.addRealationDirect(j6);j2.addRealationDirect(j8);
+		j3.addRealationDirect(j5);j3.addRealationDirect(j7);
+		j4.addRealationDirect(j9);
+		em.getTransaction().commit();
+		System.out.println("(Java pur) Nombre de relation N2 de j :"+j.getRelationsParNiveau(2).size());
+		System.out.println("(HQL) Nombre de relation N2 de j :"+j.getRelationsParNiveauHql(2).size());
+		System.out.println("(SQL) Nombre de relation N2 de j :"+j.getRelationsParNiveauSql(2).size());
 
 	}
 	

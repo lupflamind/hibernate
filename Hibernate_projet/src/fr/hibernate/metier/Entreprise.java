@@ -2,6 +2,7 @@ package fr.hibernate.metier;
 
 import static javax.persistence.GenerationType.IDENTITY;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.persistence.Column;
@@ -18,10 +19,10 @@ import org.hibernate.annotations.FetchMode;
 @Entity
 @Table(name="Entreprise")
 public class Entreprise {
-   
+
 	public Entreprise(){}
-	
- 	public Entreprise(String nom, String adresse) {
+
+	public Entreprise(String nom, String adresse) {
 		this.nom = nom;
 		this.adresse = adresse;
 	}
@@ -57,12 +58,12 @@ public class Entreprise {
 		return true;
 	}
 
-private int idEntreprise;
-   private String nom;
-   private String adresse;
-   private List<Poste> postes;
-   
-   /**
+	private int idEntreprise;
+	private String nom;
+	private String adresse;
+	private List<Poste> postes = new ArrayList<Poste>();
+
+	/**
 	 * @return the id
 	 */
 	@Id
@@ -125,5 +126,5 @@ private int idEntreprise;
 		this.postes = postes;
 	}
 
-	
+
 }

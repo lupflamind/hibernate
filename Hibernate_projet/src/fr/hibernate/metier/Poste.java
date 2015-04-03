@@ -7,6 +7,7 @@ import java.util.*;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
@@ -15,9 +16,19 @@ import javax.persistence.Table;
 import javax.persistence.Temporal;
 import javax.persistence.TemporalType;
 
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.FetchMode;
+
 @Entity
 @Table(name="Poste")
 public class Poste {
+
+	@Override
+	public String toString() {
+		return "Poste [idPoste=" + idPoste + ", titre=" + titre
+				+ ", dateDebut=" + dateDebut + ", dateFin=" + dateFin
+				+ ", personne=" + personne + ", entreprise=" + entreprise + "]";
+	}
 
 	public Poste(){}
 	
@@ -120,7 +131,8 @@ public class Poste {
 	/**
 	 * @return the personne
 	 */
-	@ManyToOne/*(fetch=FetchType.LAZY)*/
+	@ManyToOne(fetch=FetchType.EAGER)
+	@Fetch(FetchMode.JOIN)
 	@JoinColumn(name = "IdPersonne", nullable = false)
 	public Personne getPersonne() {
 		return personne;
@@ -134,7 +146,8 @@ public class Poste {
 	/**
 	 * @return the entreprise
 	 */
-	@ManyToOne/*(fetch=FetchType.LAZY)*/
+	@ManyToOne(fetch=FetchType.EAGER)
+	@Fetch(FetchMode.JOIN)
 	@JoinColumn(name = "IdEntreprise", nullable = false)
 	public Entreprise getEntreprise() {
 		return entreprise;

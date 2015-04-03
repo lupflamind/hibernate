@@ -2,6 +2,7 @@ package fr.hibernate.metier;
 
 import static javax.persistence.GenerationType.IDENTITY;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.persistence.Column;
@@ -51,7 +52,7 @@ public class Groupe {
 	}
 	private int idGroupe;
 	private String nom;
-	private List<Personne> personnes;
+	private List<Personne> personnes = new ArrayList<Personne>();
 	
 	/**
 	 * @return the id
