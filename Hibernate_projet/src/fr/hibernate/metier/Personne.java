@@ -32,7 +32,7 @@ import fr.hibernate.api.Connexion;
 public class Personne {
 
 	public Personne(){}
-	
+
 	public Personne(String nom, String prenom) {
 		this.nom = nom;
 		this.prenom = prenom;
@@ -158,7 +158,7 @@ public class Personne {
 	public void setPostes(List<Poste> postes) {
 		this.postes = postes;
 	}
-	
+
 	/**
 	 * @param personnesVus the personnesVus to set
 	 */
@@ -166,7 +166,7 @@ public class Personne {
 		this.personnesVus = personnesVus;
 	}
 
-	
+
 	/**
 	 * @return the personnesVus
 	 */
@@ -175,7 +175,7 @@ public class Personne {
 	@JoinTable(name ="Personne_PersonneVu", joinColumns = { 
 			@JoinColumn(name = "IdPersonne", nullable = false, updatable = false) }, 
 			inverseJoinColumns = { @JoinColumn(name = "IdPersonneVu", 
-					nullable = false, updatable = false) })
+			nullable = false, updatable = false) })
 	public List<Personne> getPersonnesVus() {
 		return personnesVus;
 	}
@@ -185,12 +185,12 @@ public class Personne {
 	@JoinTable(name ="Personne_PersonneRelation", joinColumns = { 
 			@JoinColumn(name = "IdPersonne", nullable = false, updatable = false) }, 
 			inverseJoinColumns = { @JoinColumn(name = "IdPersonneRelation", 
-					nullable = false, updatable = false) })
+			nullable = false, updatable = false) })
 	public List<Personne> getRelationsDirectes() {
 		return relationsDirectes;
 	}
-	
-	
+
+
 	/**
 	 * @param relationsDirectes the relationsDirectes to set
 	 */
@@ -223,14 +223,14 @@ public class Personne {
 		}
 		return current;
 	}
-	
+
 	/**
 	 * Relations d'un niveau en Hql
 	 * 
 	 */
 	@Transient
 	public List<Personne> getRelationsParNiveauHql(int niveau) {
-		
+
 		StringBuilder sb = new StringBuilder("Select DISTINCT(p"+niveau+") FROM Personne p0");
 
 		for (int i = 1; i<=niveau;i++){
@@ -248,11 +248,15 @@ public class Personne {
 		em.close();
 		return personnes;
 	}
-	
 
+	/**
+	 * Relations d'un niveau en Sql
+	 * 
+	 */
 	public List<Personne> getRelationsParNiveauSql(int niveau) {
-		
-		StringBuilder sb = new StringBuilder("Select DISTINCT(p"+(niveau+1)+".IdPersonne),p"+(niveau+1)+".Nom,p"+(niveau+1)+".Prenom");
+
+		StringBuilder sb = new StringBuilder("Select DISTINCT(p"+(niveau+1)+".IdPersonne),p"+(niveau+1)
+				+".Nom,p"+(niveau+1)+".Prenom");
 		sb.append(" FROM Personne p0 INNER JOIN Personne_PersonneRelation p1 ON p0.IdPersonne=p1.IdPersonne");
 		for (int i = 2; i<=niveau;i++){
 			sb.append(" INNER JOIN Personne_PersonneRelation p"+i+" ON p"+(i-1)+".IdPersonneRelation=p"+i+".IdPersonne");
@@ -285,7 +289,7 @@ public class Personne {
 	public List<Groupe> getGroupes() {
 		return groupes;
 	}
-	
+
 	/**
 	 * @param groupes the groupes to set
 	 */
