@@ -132,7 +132,7 @@ public class Poste {
 	 * @return the personne
 	 */
 	@ManyToOne(fetch=FetchType.EAGER)
-	@Fetch(FetchMode.JOIN)
+	@Fetch(FetchMode.SELECT)
 	@JoinColumn(name = "IdPersonne", nullable = false)
 	public Personne getPersonne() {
 		return personne;
@@ -147,7 +147,7 @@ public class Poste {
 	 * @return the entreprise
 	 */
 	@ManyToOne(fetch=FetchType.EAGER)
-	@Fetch(FetchMode.JOIN)
+	@Fetch(FetchMode.SELECT)
 	@JoinColumn(name = "IdEntreprise", nullable = false)
 	public Entreprise getEntreprise() {
 		return entreprise;

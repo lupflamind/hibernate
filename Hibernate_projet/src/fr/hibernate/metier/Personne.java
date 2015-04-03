@@ -158,7 +158,15 @@ public class Personne {
 	public void setPostes(List<Poste> postes) {
 		this.postes = postes;
 	}
+	
+	/**
+	 * @param personnesVus the personnesVus to set
+	 */
+	public void setPersonnesVus(List<Personne> personnesVus) {
+		this.personnesVus = personnesVus;
+	}
 
+	
 	/**
 	 * @return the personnesVus
 	 */
@@ -172,27 +180,6 @@ public class Personne {
 		return personnesVus;
 	}
 
-	/**
-	 * @param personnesVus the personnesVus to set
-	 */
-	public void setPersonnesVus(List<Personne> personnesVus) {
-		this.personnesVus = personnesVus;
-	}
-
-	/**
-	 * @param relationsDirectes the relationsDirectes to set
-	 */
-	public void setRelationsDirectes(List<Personne> relationsDirectes) {
-		this.relationsDirectes = relationsDirectes;
-	}
-
-	/**
-	 * @param groupes the groupes to set
-	 */
-	public void setGroupes(List<Groupe> groupes) {
-		this.groupes = groupes;
-	}
-
 	@ManyToMany(fetch = FetchType.LAZY)
 	//@Fetch(FetchMode.JOIN)
 	@JoinTable(name ="Personne_PersonneRelation", joinColumns = { 
@@ -201,6 +188,14 @@ public class Personne {
 					nullable = false, updatable = false) })
 	public List<Personne> getRelationsDirectes() {
 		return relationsDirectes;
+	}
+	
+	
+	/**
+	 * @param relationsDirectes the relationsDirectes to set
+	 */
+	public void setRelationsDirectes(List<Personne> relationsDirectes) {
+		this.relationsDirectes = relationsDirectes;
 	}
 
 	@Transient
@@ -285,10 +280,17 @@ public class Personne {
 		return null;
 	}
 
-	@ManyToMany(fetch = FetchType.LAZY, mappedBy = "personnes")
-	//@Fetch(FetchMode.SUBSELECT)
+	@ManyToMany(fetch = FetchType.EAGER, mappedBy = "personnes")
+	@Fetch(FetchMode.SUBSELECT)
 	public List<Groupe> getGroupes() {
 		return groupes;
+	}
+	
+	/**
+	 * @param groupes the groupes to set
+	 */
+	public void setGroupes(List<Groupe> groupes) {
+		this.groupes = groupes;
 	}
 
 	@Transient

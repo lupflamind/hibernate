@@ -114,7 +114,7 @@ public class Entreprise {
 	 * @return the postes
 	 */
 	@OneToMany(fetch = FetchType.EAGER, mappedBy = "entreprise")
-	@Fetch(FetchMode.JOIN)
+	@Fetch(FetchMode.SUBSELECT)
 	public List<Poste> getPostes() {
 		return postes;
 	}
